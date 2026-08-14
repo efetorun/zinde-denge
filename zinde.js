@@ -130,7 +130,7 @@ window.ZindeApp = (function(){
       unit:{tr:'bardak', en:'glasses', de:'Gläser'},
       how:null },
     { id:'kegel', emoji:'🌸', target:15,
-      name:{tr:'Kegel Egzersizi', en:'Kegel Exercise', de:'Kegel-Übung'},
+      name:{tr:'Farkındalık Egzersizi', en:'Awareness Exercise', de:'Achtsamkeitsübung'},
       unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
       how:{
         tr:'Pelvik taban kaslarını (idrarı kesme hissi veren kaslar) sıkarak 3-5 saniye kasılı tut, sonra aynı süre boyunca gevşet. Otururken, ayaktayken ya da yatarken fark ettirmeden yapılabilir. Nefesini tutma, karın ve kalça kaslarını sıkmamaya dikkat et.',
