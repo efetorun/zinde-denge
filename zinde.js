@@ -1,28 +1,142 @@
 // Zinde — Ev Antrenmanı (namespaced module, embeddable in shell app)
+// Çok dilli (TR/EN/DE) — window.ZindeApp.init(rootId) ve setLang(lang) ile kullanılır.
 window.ZindeApp = (function(){
   const STORAGE_KEY = 'zinde-app-data-v1';
+  const LANG_KEY = 'app-lang-v1';
+  const LOCALE = { tr:'tr-TR', en:'en-US', de:'de-DE' };
+
+  const STRINGS = {
+    tr: {
+      tabToday:'Bugün', tabHistory:'Geçmiş', tabGoals:'Hedefler',
+      settingsTooltip:'Hedefleri düzenle',
+      ringLabel:'günlük hedeflerin tamamlandı',
+      pillDone:'bugünü tamamladın 🎉', pillContinue:'devam et',
+      target:'hedef:',
+      howToggle:'Nasıl yapılır?',
+      historyEmpty:'Henüz geçmiş kayıt yok. Bugünkü hareketlerini ekleyince burada görünecek.',
+      goalsIntro:'Günlük hedef sayılarını kendine göre ayarla.',
+      save:'Kaydet',
+      disclaimer:'Ağırlıksız ev egzersizleri genel bir öneridir; sağlık durumuna göre tempoyu kendine göre ayarla.',
+    },
+    en: {
+      tabToday:'Today', tabHistory:'History', tabGoals:'Goals',
+      settingsTooltip:'Edit goals',
+      ringLabel:'of daily goals completed',
+      pillDone:'you completed today 🎉', pillContinue:'keep going',
+      target:'target:',
+      howToggle:'How to do it?',
+      historyEmpty:"No history yet. It will appear here once you log today's activity.",
+      goalsIntro:'Adjust your daily goal numbers to fit you.',
+      save:'Save',
+      disclaimer:'These bodyweight home exercises are a general suggestion; adjust the pace to fit your own health condition.',
+    },
+    de: {
+      tabToday:'Heute', tabHistory:'Verlauf', tabGoals:'Ziele',
+      settingsTooltip:'Ziele bearbeiten',
+      ringLabel:'der Tagesziele erreicht',
+      pillDone:'Heute geschafft 🎉', pillContinue:'weiter so',
+      target:'Ziel:',
+      howToggle:'Wie geht das?',
+      historyEmpty:'Noch kein Verlauf. Er erscheint hier, sobald du deine heutigen Aktivitäten einträgst.',
+      goalsIntro:'Passe deine täglichen Zielwerte an dich an.',
+      save:'Speichern',
+      disclaimer:'Diese Bodyweight-Übungen für zuhause sind ein allgemeiner Vorschlag; passe das Tempo an deinen eigenen Gesundheitszustand an.',
+    },
+  };
 
   const DEFAULT_GOALS = [
-    { id:'situp',    name:'Mekik',            emoji:'🔥', target:50, unit:'tekrar',
-      how:'Sırt üstü uzan, dizlerini bük ve ayaklarını yere bas. Ellerini göğsünde çaprazla ya da başının arkasında hafifçe tut. Karın kaslarını sıkarak üst gövdeni dizlerine doğru kaldır, tepede bir an dur, sonra kontrollü şekilde sırt üstüne geri in. Boynu çekmeden, hareketi karınla yap.' },
-    { id:'pushup',   name:'Şınav',            emoji:'💪', target:30, unit:'tekrar',
-      how:'Yüzüstü pozisyonda ellerini omuz genişliğinde yere yasla, vücudun baştan topuğa düz bir çizgi oluştursun. Dirseklerini bükerek göğsünü yere yaklaştır, sonra kollarını iterek başlangıç pozisyonuna dön. Kalçanı düşürme, karnını sıkı tut. Zor geliyorsa dizlerin üzerinde yapabilirsin.' },
-    { id:'squat',    name:'Squat',            emoji:'🦵', target:50, unit:'tekrar',
-      how:'Ayaklarını omuz genişliğinde aç, sırtını düz tut. Sanki arkanda bir sandalyeye oturuyormuş gibi kalçanı geriye ve aşağı it, dizlerin ayak uçlarını geçmesin. Uyluklar yere paralel olunca topuklarından güç alarak ayağa kalk.' },
-    { id:'plank',    name:'Plank',            emoji:'🧘', target:60, unit:'saniye',
-      how:'Dirseklerini ve ön kollarını yere koy, dirsekler omuz hizasında olsun. Ayak uçların üzerinde yüksel ve vücudunu baştan topuğa kadar düz bir çizgi halinde tut. Kalçanı ne yukarı kaldır ne de düşür; karın ve kalça kaslarını sıkarak süreyi tamamla.' },
-    { id:'jj',       name:'Jumping Jack',     emoji:'🤸', target:50, unit:'tekrar',
-      how:'Ayakta dik dur, kollar yanda. Zıplayarak bacaklarını omuz genişliğinden dışarı aç ve aynı anda kollarını başının üstünde birleştir. Ardından zıplayarak başlangıç pozisyonuna dön. Akıcı ve ritmik bir tempoda tekrarla.' },
-    { id:'burpee',   name:'Burpee',           emoji:'⚡', target:20, unit:'tekrar',
-      how:'Ayakta başla, çömel ve ellerini yere koy. Bacaklarını arkaya fırlatarak plank pozisyonuna geç, istersen bir şınav çek. Bacaklarını tekrar ellerine doğru çek, çömelme pozisyonuna dön ve zıplayarak ayağa kalk. Akıcı tek bir hareket gibi yap.' },
-    { id:'lunge',    name:'Lunge',            emoji:'🚶', target:40, unit:'tekrar',
-      how:'Bir ayağını öne uzun bir adım at. Her iki dizini de yaklaşık 90 derece bükerek çök; arka diz yere yakın ama değmesin, ön diz ayak ucunu geçmesin. Ön ayağınla itki alarak başlangıç pozisyonuna dön, bacak değiştir.' },
-    { id:'mountain', name:'Mountain Climber', emoji:'⛰️', target:40, unit:'tekrar',
-      how:'Şınav/plank pozisyonunda başla, eller omuz hizasında yere basılı. Dizlerini sırayla, koşar gibi hızlı hareketle göğsüne doğru çek, sonra geri uzat. Kalçan sabit ve düz kalsın, tempoyu hızlı tut.' },
-    { id:'highknees',name:'Yüksek Diz',       emoji:'🏃', target:50, unit:'tekrar',
-      how:'Yerinde koşar gibi adım at, her adımda dizini kalça hizasına kadar hızla yukarı kaldır. Kollarını koşar gibi öne-arkaya salla, gövdeni dik tut ve tempoyu canlı tutmaya çalış.' },
-    { id:'bridge',   name:'Kalça Köprüsü',    emoji:'🌉', target:40, unit:'tekrar',
-      how:'Sırt üstü uzan, dizlerini bük ve ayaklarını kalça genişliğinde yere bas. Topuklarından itki alarak kalçanı yukarı kaldır, omuzdan dize düz bir çizgi oluşana kadar. Tepede kalça kaslarını sık, sonra kontrollü şekilde in.' },
+    { id:'situp', emoji:'🔥', target:50,
+      name:{tr:'Mekik', en:'Sit-up', de:'Sit-up'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Sırt üstü uzan, dizlerini bük ve ayaklarını yere bas. Ellerini göğsünde çaprazla ya da başının arkasında hafifçe tut. Karın kaslarını sıkarak üst gövdeni dizlerine doğru kaldır, tepede bir an dur, sonra kontrollü şekilde sırt üstüne geri in. Boynu çekmeden, hareketi karınla yap.',
+        en:'Lie on your back with knees bent and feet flat on the floor. Cross your arms over your chest or hold them lightly behind your head. Engage your abs to lift your upper body toward your knees, pause briefly at the top, then lower back down with control. Avoid pulling on your neck — let your core do the work.',
+        de:'Lege dich auf den Rücken, Knie gebeugt, Füße flach auf dem Boden. Verschränke die Arme vor der Brust oder halte sie locker hinter dem Kopf. Spanne die Bauchmuskeln an und hebe den Oberkörper Richtung Knie, halte oben kurz, senke dich dann kontrolliert wieder ab. Ziehe nicht am Nacken — die Bewegung kommt aus der Körpermitte.',
+      } },
+    { id:'pushup', emoji:'💪', target:30,
+      name:{tr:'Şınav', en:'Push-up', de:'Liegestütz'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Yüzüstü pozisyonda ellerini omuz genişliğinde yere yasla, vücudun baştan topuğa düz bir çizgi oluştursun. Dirseklerini bükerek göğsünü yere yaklaştır, sonra kollarını iterek başlangıç pozisyonuna dön. Kalçanı düşürme, karnını sıkı tut. Zor geliyorsa dizlerin üzerinde yapabilirsin.',
+        en:"Get into a plank position with hands slightly wider than shoulder-width, body in a straight line from head to heels. Bend your elbows to lower your chest toward the floor, then push back up to the start. Keep your hips level and your core tight. If it's too hard, do it from your knees.",
+        de:'Gehe in die Liegestützposition, Hände etwas breiter als schulterbreit, Körper von Kopf bis Ferse eine gerade Linie. Beuge die Ellbogen und senke die Brust Richtung Boden, drücke dich dann wieder hoch. Halte die Hüfte auf gleicher Höhe und den Rumpf angespannt. Bei Bedarf von den Knien aus ausführen.',
+      } },
+    { id:'squat', emoji:'🦵', target:50,
+      name:{tr:'Squat', en:'Squat', de:'Kniebeuge'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Ayaklarını omuz genişliğinde aç, sırtını düz tut. Sanki arkanda bir sandalyeye oturuyormuş gibi kalçanı geriye ve aşağı it, dizlerin ayak uçlarını geçmesin. Uyluklar yere paralel olunca topuklarından güç alarak ayağa kalk.',
+        en:'Stand with feet shoulder-width apart, back straight. Push your hips back and down as if sitting into a chair, keeping your knees behind your toes. Once your thighs are parallel to the floor, drive through your heels to stand back up.',
+        de:'Stelle dich mit schulterbreiten Füßen hin, Rücken gerade. Schiebe die Hüfte nach hinten und unten, als würdest du dich auf einen Stuhl setzen, die Knie bleiben hinter den Zehen. Wenn die Oberschenkel parallel zum Boden sind, drücke dich über die Fersen wieder nach oben.',
+      } },
+    { id:'plank', emoji:'🧘', target:60,
+      name:{tr:'Plank', en:'Plank', de:'Unterarmstütz'},
+      unit:{tr:'saniye', en:'seconds', de:'Sekunden'},
+      how:{
+        tr:'Dirseklerini ve ön kollarını yere koy, dirsekler omuz hizasında olsun. Ayak uçların üzerinde yüksel ve vücudunu baştan topuğa kadar düz bir çizgi halinde tut. Kalçanı ne yukarı kaldır ne de düşür; karın ve kalça kaslarını sıkarak süreyi tamamla.',
+        en:"Rest on your forearms and toes, elbows under your shoulders, body in a straight line from head to heels. Don't let your hips sag or pike up — keep your core and glutes engaged for the full hold.",
+        de:'Stütze dich auf Unterarme und Zehenspitzen, Ellbogen unter den Schultern, Körper von Kopf bis Ferse eine gerade Linie. Lasse die Hüfte weder absacken noch nach oben wandern — halte Rumpf und Gesäß während der gesamten Zeit angespannt.',
+      } },
+    { id:'jj', emoji:'🤸', target:50,
+      name:{tr:'Jumping Jack', en:'Jumping Jack', de:'Jumping Jack'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Ayakta dik dur, kollar yanda. Zıplayarak bacaklarını omuz genişliğinden dışarı aç ve aynı anda kollarını başının üstünde birleştir. Ardından zıplayarak başlangıç pozisyonuna dön. Akıcı ve ritmik bir tempoda tekrarla.',
+        en:'Stand tall with arms at your sides. Jump your feet out wider than shoulder-width while raising your arms overhead, then jump back to the start position. Keep a steady, rhythmic pace.',
+        de:'Stehe aufrecht, Arme an den Seiten. Springe mit den Füßen weiter als schulterbreit auseinander und hebe gleichzeitig die Arme über den Kopf, dann zurückspringen. Halte ein gleichmäßiges Tempo.',
+      } },
+    { id:'burpee', emoji:'⚡', target:20,
+      name:{tr:'Burpee', en:'Burpee', de:'Burpee'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Ayakta başla, çömel ve ellerini yere koy. Bacaklarını arkaya fırlatarak plank pozisyonuna geç, istersen bir şınav çek. Bacaklarını tekrar ellerine doğru çek, çömelme pozisyonuna dön ve zıplayarak ayağa kalk. Akıcı tek bir hareket gibi yap.',
+        en:'Start standing, squat down and place your hands on the floor. Kick your feet back into a plank, do a push-up if you like, then jump your feet back to your hands and explode up into a jump. Keep it as one smooth motion.',
+        de:'Beginne im Stand, gehe in die Hocke und setze die Hände auf den Boden. Springe mit den Füßen nach hinten in die Liegestützposition, mache optional einen Liegestütz, springe dann mit den Füßen zurück zu den Händen und explosiv nach oben in einen Sprung. Als eine fließende Bewegung ausführen.',
+      } },
+    { id:'lunge', emoji:'🚶', target:40,
+      name:{tr:'Lunge', en:'Lunge', de:'Ausfallschritt'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Bir ayağını öne uzun bir adım at. Her iki dizini de yaklaşık 90 derece bükerek çök; arka diz yere yakın ama değmesin, ön diz ayak ucunu geçmesin. Ön ayağınla itki alarak başlangıç pozisyonuna dön, bacak değiştir.',
+        en:'Step one leg forward into a long stride. Bend both knees to about 90 degrees, keeping the back knee close to the floor without touching and the front knee behind your toes. Push off your front foot to return to standing, then switch legs.',
+        de:'Mache einen großen Schritt nach vorne. Beuge beide Knie auf etwa 90 Grad, das hintere Knie bleibt knapp über dem Boden, ohne ihn zu berühren, das vordere Knie bleibt hinter den Zehen. Drücke dich über den vorderen Fuß wieder hoch und wechsle die Seite.',
+      } },
+    { id:'mountain', emoji:'⛰️', target:40,
+      name:{tr:'Mountain Climber', en:'Mountain Climber', de:'Mountain Climber'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Şınav/plank pozisyonunda başla, eller omuz hizasında yere basılı. Dizlerini sırayla, koşar gibi hızlı hareketle göğsüne doğru çek, sonra geri uzat. Kalçan sabit ve düz kalsın, tempoyu hızlı tut.',
+        en:'Start in a push-up/plank position with hands under your shoulders. Quickly drive your knees toward your chest one at a time, like running in place. Keep your hips steady and level, and keep the pace brisk.',
+        de:'Beginne in der Liegestütz-/Plank-Position, Hände unter den Schultern. Ziehe abwechselnd schnell die Knie Richtung Brust, wie beim Laufen an Ort und Stelle. Halte die Hüfte stabil und auf gleicher Höhe, Tempo zügig halten.',
+      } },
+    { id:'highknees', emoji:'🏃', target:50,
+      name:{tr:'Yüksek Diz', en:'High Knees', de:'Kniehebelauf'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Yerinde koşar gibi adım at, her adımda dizini kalça hizasına kadar hızla yukarı kaldır. Kollarını koşar gibi öne-arkaya salla, gövdeni dik tut ve tempoyu canlı tutmaya çalış.',
+        en:'Jog in place, driving each knee up to hip height as quickly as you can. Pump your arms as if running and keep your torso upright with a lively pace.',
+        de:'Laufe auf der Stelle und ziehe jedes Knie so schnell wie möglich bis zur Hüfthöhe hoch. Bewege die Arme wie beim Laufen und halte den Oberkörper aufrecht in zügigem Tempo.',
+      } },
+    { id:'bridge', emoji:'🌉', target:40,
+      name:{tr:'Kalça Köprüsü', en:'Glute Bridge', de:'Hüftheben'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Sırt üstü uzan, dizlerini bük ve ayaklarını kalça genişliğinde yere bas. Topuklarından itki alarak kalçanı yukarı kaldır, omuzdan dize düz bir çizgi oluşana kadar. Tepede kalça kaslarını sık, sonra kontrollü şekilde in.',
+        en:'Lie on your back with knees bent and feet hip-width apart on the floor. Drive through your heels to lift your hips until your body forms a straight line from shoulders to knees. Squeeze your glutes at the top, then lower back down with control.',
+        de:'Lege dich auf den Rücken, Knie gebeugt, Füße hüftbreit auf dem Boden. Drücke dich über die Fersen hoch, bis Schultern, Hüfte und Knie eine gerade Linie bilden. Presse oben das Gesäß zusammen, senke dich dann kontrolliert wieder ab.',
+      } },
+    { id:'water', emoji:'💧', target:10,
+      name:{tr:'Su', en:'Water', de:'Wasser'},
+      unit:{tr:'bardak', en:'glasses', de:'Gläser'},
+      how:null },
+    { id:'kegel', emoji:'🌸', target:15,
+      name:{tr:'Kegel Egzersizi', en:'Kegel Exercise', de:'Kegel-Übung'},
+      unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
+      how:{
+        tr:'Pelvik taban kaslarını (idrarı kesme hissi veren kaslar) sıkarak 3-5 saniye kasılı tut, sonra aynı süre boyunca gevşet. Otururken, ayaktayken ya da yatarken fark ettirmeden yapılabilir. Nefesini tutma, karın ve kalça kaslarını sıkmamaya dikkat et.',
+        en:"Squeeze the pelvic floor muscles (the ones you'd use to stop urine flow) and hold for 3-5 seconds, then release for the same amount of time. Can be done discreetly while sitting, standing, or lying down. Don't hold your breath, and avoid tensing your abs or glutes instead.",
+        de:'Spanne die Beckenbodenmuskulatur an (die Muskeln, mit denen man den Harnfluss stoppen würde) und halte 3-5 Sekunden, löse dann für die gleiche Zeit. Kann unauffällig im Sitzen, Stehen oder Liegen ausgeführt werden. Nicht die Luft anhalten und nicht stattdessen Bauch oder Gesäß anspannen.',
+      } },
   ];
 
   // ---- basit stick-figure pozları (hareket görselleri) ----
@@ -94,12 +208,14 @@ window.ZindeApp = (function(){
     let activeTab = 'today';
     let openHistDate = null;
     let openHowId = null;
+    let lang = 'tr';
 
     function todayKey(){ return new Date().toISOString().slice(0,10); }
     function fmtDate(k){
       const d = new Date(k+'T00:00:00');
-      return d.toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long'});
+      return d.toLocaleDateString(LOCALE[lang] || 'tr-TR', {weekday:'long', day:'numeric', month:'long'});
     }
+    function t(key){ return (STRINGS[lang] || STRINGS.tr)[key]; }
 
     function loadData(){
       try{
@@ -108,11 +224,15 @@ window.ZindeApp = (function(){
         if(!data.goals || !data.goals.length) data.goals = DEFAULT_GOALS.map(g => ({...g}));
         data.goals = data.goals.map(g => {
           const def = DEFAULT_GOALS.find(d => d.id === g.id);
-          return def ? { ...def, ...g, how: g.how || def.how } : g;
+          return def ? { ...def, ...g, name: def.name, unit: def.unit, how: def.how } : g;
+        });
+        DEFAULT_GOALS.forEach(def => {
+          if(!data.goals.find(g => g.id === def.id)) data.goals.push({...def});
         });
       }catch(e){
         data = { goals: DEFAULT_GOALS.map(g => ({...g})), days: {} };
       }
+      try{ lang = localStorage.getItem(LANG_KEY) || 'tr'; }catch(e){ lang = 'tr'; }
       render();
     }
 
@@ -154,13 +274,13 @@ window.ZindeApp = (function(){
             <h1 class="z-h1">Zinde</h1>
             <div class="z-sub">${fmtDate(key)}</div>
           </div>
-          <button class="z-gear" id="z-open-settings" title="Hedefleri düzenle">⚙︎</button>
+          <button class="z-gear" id="z-open-settings" title="${t('settingsTooltip')}">⚙︎</button>
         </div>
 
         <div class="z-tabbar">
-          <button data-tab="today" class="${activeTab==='today'?'active':''}">Bugün</button>
-          <button data-tab="history" class="${activeTab==='history'?'active':''}">Geçmiş</button>
-          <button data-tab="goals" class="${activeTab==='goals'?'active':''}">Hedefler</button>
+          <button data-tab="today" class="${activeTab==='today'?'active':''}">${t('tabToday')}</button>
+          <button data-tab="history" class="${activeTab==='history'?'active':''}">${t('tabHistory')}</button>
+          <button data-tab="goals" class="${activeTab==='goals'?'active':''}">${t('tabGoals')}</button>
         </div>
 
         ${activeTab==='today' ? `
@@ -169,8 +289,8 @@ window.ZindeApp = (function(){
             ${ringSVG(pct, done)}
             <div class="z-ring-nums">
               <div class="z-big">${pct}%</div>
-              <div class="z-big-label">günlük hedeflerin tamamlandı</div>
-              <div class="z-pill ${done?'good':''}">${done ? 'bugünü tamamladın 🎉' : 'devam et'}</div>
+              <div class="z-big-label">${t('ringLabel')}</div>
+              <div class="z-pill ${done?'good':''}">${done ? t('pillDone') : t('pillContinue')}</div>
             </div>
           </div>
         </div>
@@ -181,7 +301,7 @@ window.ZindeApp = (function(){
 
         ${activeTab==='goals' ? goalsHTML() : ''}
 
-        <div class="z-disclaimer">Ağırlıksız ev egzersizleri genel bir öneridir; sağlık durumuna göre tempoyu kendine göre ayarla.</div>
+        <div class="z-disclaimer">${t('disclaimer')}</div>
       `;
     }
 
@@ -205,24 +325,25 @@ window.ZindeApp = (function(){
       const pct = Math.min(100, Math.round((count / g.target) * 100));
       const done = count >= g.target;
       const howOpen = openHowId === g.id;
+      const howText = g.how ? (g.how[lang] || g.how.tr) : null;
       return `
         <div class="z-ex-card">
           <div class="z-ex-top">
             <div class="z-ex-emoji">${g.emoji}</div>
             <div>
-              <div class="z-ex-name">${g.name}</div>
-              <div class="z-ex-target">hedef: ${g.target} ${g.unit}</div>
+              <div class="z-ex-name">${g.name[lang] || g.name.tr}</div>
+              <div class="z-ex-target">${t('target')} ${g.target} ${g.unit[lang] || g.unit.tr}</div>
             </div>
           </div>
           <div class="z-ex-bar-track"><div class="z-ex-bar-fill ${done?'done':''}" style="width:${pct}%"></div></div>
           <div class="z-ex-controls">
             <button class="z-ex-btn minus" data-minus="${g.id}">−</button>
-            <div class="z-ex-count">${count}</div>
+            <input class="z-ex-count-input" type="number" inputmode="numeric" min="0" step="1" data-count-input="${g.id}" value="${count}">
             <button class="z-ex-btn" data-plus="${g.id}">+</button>
           </div>
-          ${g.how ? `
-            <button class="z-how-toggle" data-how="${g.id}">${howOpen ? 'Nasıl yapılır? ▴' : 'Nasıl yapılır? ▾'}</button>
-            ${howOpen ? `<div class="z-how-box">${howSVG(g.id)}${g.how}</div>` : ''}
+          ${howText ? `
+            <button class="z-how-toggle" data-how="${g.id}">${t('howToggle')} ${howOpen ? '▴' : '▾'}</button>
+            ${howOpen ? `<div class="z-how-box">${howSVG(g.id)}${howText}</div>` : ''}
           ` : ''}
         </div>
       `;
@@ -233,7 +354,7 @@ window.ZindeApp = (function(){
         .filter(k => Object.values(data.days[k].counts || {}).some(v => v > 0))
         .sort((a,b) => b.localeCompare(a));
       if(!keys.length){
-        return `<div class="z-card"><div class="z-empty">Henüz geçmiş kayıt yok. Bugünkü hareketlerini ekleyince burada görünecek.</div></div>`;
+        return `<div class="z-card"><div class="z-empty">${t('historyEmpty')}</div></div>`;
       }
       return keys.map(k => {
         const day = data.days[k];
@@ -249,7 +370,7 @@ window.ZindeApp = (function(){
               <div class="z-hist-detail">
                 ${data.goals.map(g => {
                   const c = (day.counts && day.counts[g.id]) || 0;
-                  return `<div class="z-hist-line"><span>${g.emoji} ${g.name}</span><b>${c} / ${g.target} ${g.unit}</b></div>`;
+                  return `<div class="z-hist-line"><span>${g.emoji} ${g.name[lang] || g.name.tr}</span><b>${c} / ${g.target} ${g.unit[lang] || g.unit.tr}</b></div>`;
                 }).join('')}
               </div>
             ` : ''}
@@ -261,17 +382,26 @@ window.ZindeApp = (function(){
     function goalsHTML(){
       return `
         <div class="z-card">
-          <div class="z-sub" style="margin-bottom:8px;">Günlük hedef sayılarını kendine göre ayarla.</div>
+          <div class="z-sub" style="margin-bottom:8px;">${t('goalsIntro')}</div>
           ${data.goals.map(g => `
             <div class="z-goal-row">
               <div class="z-ex-emoji">${g.emoji}</div>
-              <div class="z-goal-name">${g.name} <span style="color:var(--z-ink-soft);font-weight:400;">(${g.unit})</span></div>
+              <div class="z-goal-name">${g.name[lang] || g.name.tr} <span style="color:var(--z-ink-soft);font-weight:400;">(${g.unit[lang] || g.unit.tr})</span></div>
               <input type="number" min="1" data-goal-target="${g.id}" value="${g.target}">
             </div>
           `).join('')}
-          <button class="z-btn-primary" id="z-save-goals">Kaydet</button>
+          <button class="z-btn-primary" id="z-save-goals">${t('save')}</button>
         </div>
       `;
+    }
+
+    function commitCount(id, rawVal){
+      const day = getDay(todayKey());
+      let val = parseInt(rawVal, 10);
+      if(isNaN(val) || val < 0) val = 0;
+      day.counts[id] = val;
+      persist();
+      render();
     }
 
     function bindShell(){
@@ -300,6 +430,11 @@ window.ZindeApp = (function(){
           persist();
           render();
         };
+      });
+
+      root.querySelectorAll('[data-count-input]').forEach(inp => {
+        inp.addEventListener('change', () => commitCount(inp.dataset.countInput, inp.value));
+        inp.addEventListener('keydown', (e) => { if(e.key === 'Enter') inp.blur(); });
       });
 
       root.querySelectorAll('[data-hist]').forEach(el => {
@@ -334,6 +469,10 @@ window.ZindeApp = (function(){
     }
 
     loadData();
+
+    return {
+      setLang(l){ lang = l; render(); },
+    };
   }
 
   return { init };

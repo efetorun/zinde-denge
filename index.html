@@ -43,6 +43,18 @@
   }
   .switcher button.active.zinde{background:#C44F20;color:#fff;border-color:#C44F20;}
   .switcher button.active.denge{background:#2F6F5E;color:#fff;border-color:#2F6F5E;}
+  .lang-switcher{display:flex;gap:6px;justify-content:center;margin-top:10px;}
+  .lang-switcher button{
+    font-family:inherit;cursor:pointer;
+    border:1px solid var(--shell-border);
+    border-radius:99px;
+    background:#fff;
+    color:var(--shell-ink-soft);
+    font-size:12px;
+    font-weight:700;
+    padding:5px 14px;
+  }
+  .lang-switcher button.active{background:var(--shell-ink);color:#fff;border-color:var(--shell-ink);}
   #app-zinde, #app-denge{max-width:560px;margin:0 auto;padding:20px 16px 80px;}
   .loading{text-align:center;padding:60px 0;color:var(--shell-ink-soft);font-size:14px;}
   .footer-credit{text-align:center;font-size:11px;color:var(--shell-ink-soft);padding:10px 0 20px;}
@@ -82,7 +94,14 @@
   #app-zinde .z-ex-bar-fill{height:100%;border-radius:99px;background:var(--z-accent);transition:width .2s ease;}
   #app-zinde .z-ex-bar-fill.done{background:var(--z-good);}
   #app-zinde .z-ex-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:14px;}
-  #app-zinde .z-ex-count{font-size:24px;font-weight:800;min-width:64px;text-align:center;color:var(--z-ink);}
+  #app-zinde .z-ex-count-input{
+    font-size:24px;font-weight:800;min-width:64px;max-width:92px;text-align:center;color:var(--z-ink);
+    border:none;border-bottom:2px solid transparent;background:transparent;font-family:inherit;
+    padding:2px 0;-moz-appearance:textfield;
+  }
+  #app-zinde .z-ex-count-input::-webkit-outer-spin-button,
+  #app-zinde .z-ex-count-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  #app-zinde .z-ex-count-input:focus{outline:none;border-bottom-color:var(--z-accent);}
   #app-zinde .z-ex-btn{width:44px;height:44px;border-radius:50%;background:var(--z-bg);border:1px solid var(--z-border);font-size:20px;font-weight:700;color:var(--z-ink);display:flex;align-items:center;justify-content:center;line-height:1;}
   #app-zinde .z-ex-btn:active{background:var(--z-accent-soft);}
   #app-zinde .z-ex-btn.minus{color:var(--z-ink-soft);}
@@ -162,8 +181,13 @@
 <body>
 <div id="shell">
   <div class="switcher">
-    <button id="switch-zinde" class="zinde">🏋️ Antrenman</button>
-    <button id="switch-denge" class="denge">🍽️ Beslenme</button>
+    <button id="switch-zinde" class="zinde">🏋️ <span id="switch-zinde-label">Antrenman</span></button>
+    <button id="switch-denge" class="denge">🍽️ <span id="switch-denge-label">Beslenme</span></button>
+  </div>
+  <div class="lang-switcher">
+    <button id="applang-tr" data-applang="tr">TR</button>
+    <button id="applang-en" data-applang="en">EN</button>
+    <button id="applang-de" data-applang="de">DE</button>
   </div>
 </div>
 <div id="app-zinde" style="display:none;"><div class="loading">Yükleniyor…</div></div>
@@ -175,8 +199,25 @@
 <script src="denge.js"></script>
 <script>
   const SHELL_KEY = 'zinde-denge-active-app';
+  const APP_LANG_KEY = 'app-lang-v1';
+  const SWITCH_LABELS = {
+    tr: { antrenman:'Antrenman', beslenme:'Beslenme' },
+    en: { antrenman:'Training', beslenme:'Nutrition' },
+    de: { antrenman:'Training', beslenme:'Ernährung' },
+  };
+
   let activeApp = localStorage.getItem(SHELL_KEY) || 'zinde';
-  let zindeStarted = false, dengeStarted = false;
+  let appLang = localStorage.getItem(APP_LANG_KEY) || 'tr';
+  let zindeInstance = null, dengeInstance = null;
+
+  function applySwitchLabels(){
+    const l = SWITCH_LABELS[appLang] || SWITCH_LABELS.tr;
+    document.getElementById('switch-zinde-label').textContent = l.antrenman;
+    document.getElementById('switch-denge-label').textContent = l.beslenme;
+    document.querySelectorAll('.lang-switcher button').forEach(b => {
+      b.classList.toggle('active', b.dataset.applang === appLang);
+    });
+  }
 
   function showApp(name){
     activeApp = name;
@@ -185,13 +226,25 @@
     document.getElementById('app-denge').style.display = name === 'denge' ? 'block' : 'none';
     document.getElementById('switch-zinde').classList.toggle('active', name === 'zinde');
     document.getElementById('switch-denge').classList.toggle('active', name === 'denge');
-    if(name === 'zinde' && !zindeStarted){ zindeStarted = true; window.ZindeApp.init('app-zinde'); }
-    if(name === 'denge' && !dengeStarted){ dengeStarted = true; window.DengeApp.init('app-denge'); }
+    if(name === 'zinde' && !zindeInstance){ zindeInstance = window.ZindeApp.init('app-zinde'); }
+    if(name === 'denge' && !dengeInstance){ dengeInstance = window.DengeApp.init('app-denge'); }
+  }
+
+  function setAppLang(l){
+    appLang = l;
+    try{ localStorage.setItem(APP_LANG_KEY, l); }catch(e){}
+    applySwitchLabels();
+    if(zindeInstance) zindeInstance.setLang(l);
+    if(dengeInstance) dengeInstance.setLang(l);
   }
 
   document.getElementById('switch-zinde').onclick = () => showApp('zinde');
   document.getElementById('switch-denge').onclick = () => showApp('denge');
+  document.querySelectorAll('.lang-switcher button').forEach(b => {
+    b.onclick = () => setAppLang(b.dataset.applang);
+  });
 
+  applySwitchLabels();
   showApp(activeApp);
 
   if('serviceWorker' in navigator){

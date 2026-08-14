@@ -1,14 +1,166 @@
 // Denge — Kişisel Takip (namespaced module, embeddable in shell app)
+// Çok dilli (TR/EN/DE) arayüz — window.DengeApp.init(rootId) ve dönen setLang(lang) ile kullanılır.
 // FOOD_DB (foods.js) TR/EN/DE çok dilli yiyecek/içecek veritabanını kullanır.
 window.DengeApp = (function(){
   const STORAGE_KEY = 'denge-app-data-v1';
-  const LANG_KEY_KEY = 'denge-app-lang-v1';
+  const APP_LANG_KEY = 'app-lang-v1';
+  const FOOD_LANG_KEY = 'denge-app-lang-v1';
   const LANG_FIELD = { tr:'t', en:'e', de:'d' };
-  const LANG_LABEL = { tr:'TR', en:'EN', de:'DE' };
+  const LOCALE = { tr:'tr-TR', en:'en-US', de:'de-DE' };
 
   const MAX_SAFE_KG_PER_WEEK = 0.75;
   const MIN_SAFE_KCAL = 1200;
   const KCAL_PER_KG = 7700;
+
+  const STRINGS = {
+    tr: {
+      onboardIntro:'Başlamadan önce birkaç bilgiye ihtiyacım var.',
+      labelHeight:'Boy (cm)', phHeight:'örn. 178',
+      labelWeight:'Mevcut kilo (kg)', phWeight:'örn. 82',
+      labelGoalWeight:'Hedef kilo (kg)', phGoalWeight:'örn. 75',
+      labelAge:'Yaş', phAge:'örn. 34',
+      labelSex:'Cinsiyet', sexMale:'Erkek', sexFemale:'Kadın', sexUnspec:'Belirtmiyorum',
+      labelActivity:'Aktivite seviyesi',
+      activityLow:'Az hareketli (çoğunlukla masa başı)',
+      activityMid:'Orta aktif (haftada birkaç egzersiz)',
+      activityHigh:'Aktif (günlük egzersiz / fiziksel iş)',
+      labelWeeks:'Bu hedefe kaç haftada ulaşmak istersin?', phWeeks:'örn. 4',
+      onboardNote:'Not: Haftada 0,5–1 kg dışına çıkan hedefleri otomatik olarak güvenli bir tempoya göre ayarlarım, gerçekçi bir süre önerisiyle.',
+      start:'Başla',
+      onboardDisclaimer:'Bu araç genel bilgi amaçlıdır, tıbbi tavsiye yerine geçmez. Önemli kilo hedefleri için bir doktor veya diyetisyene danışman iyi olur.',
+      alertFillFields:'Lütfen boy, kilo, hedef kilo ve yaş alanlarını doldur.',
+      settingsTooltip:'Profili düzenle',
+      tabToday:'Bugün', tabWeight:'Kilo', tabTips:'Öneriler',
+      pillOver:'biraz aştın, sorun değil', pillGood:'yolunda gidiyorsun',
+      foodSectionTitle:'Bugün ne yedin?',
+      langNote:'≈5000 yiyecek/içecek, 3 dilde aranabilir',
+      foodPlaceholder:'ör. elma / apple / Apfel',
+      foodHint:'Listeden bir öneriye dokunursan kalori otomatik dolar. Listede yoksa kalori kısmını elle gir.',
+      add:'Ekle', entryEmpty:'Henüz kayıt yok.',
+      weightSectionTitle:'Kilo takibi',
+      weightChartEmpty:'En az 2 kilo ölçümü girince burada bir grafik göreceksin.',
+      weightLabel:'Bugünkü kilon (kg)', save:'Kaydet',
+      tipsTitle1:'Genel beslenme önerileri',
+      tips1:[
+        'Her öğünde protein bulunmasına dikkat et (yumurta, yoğurt, baklagiller, yağsız et/balık) — tokluk süresini uzatır.',
+        'Sebze ve tam tahılları öncelikli tut, işlenmiş/şekerli gıdaları azalt.',
+        'Yeterli su iç; bazen susuzluk açlıkla karışabilir.',
+        'Aşırı kısıtlama yerine dengeli, sürdürülebilir porsiyonlar hedefle — uzun vadede işe yarayan budur.',
+      ],
+      tipsTitle2:'Basit hareket önerileri',
+      tips2:[
+        'Günde 7.000–10.000 adım iyi bir temel hedeftir; kısa yürüyüşlerle bölebilirsin.',
+        'Haftada 2-3 gün temel kuvvet çalışması (squat, plank, bantla direnç) kas kütlesini korur.',
+        'Merdiven kullanmak, kısa mesafeleri yürümek gibi küçük alışkanlıklar toplamda fark yaratır.',
+      ],
+      tipsDisclaimer:'Bu genel öneriler tıbbi/diyetisyen tavsiyesinin yerini tutmaz.',
+      kcalRemaining:(r)=>`${r} kcal kaldı`,
+      kcalOver:(x)=>`${x} kcal hedefin üzerinde`,
+      overNote:(steps)=>`Bugün biraz fazla oldu, önemli değil — tek gün büyük resmi değiştirmez. İstersen dengelemek için ~${steps} adımlık bir yürüyüş iyi gelebilir.`,
+      planCapped:(w,kg,rw)=>`Girdiğin sürede (${w} hafta) ${kg} kg vermek sağlıklı hız sınırını aşıyor. Bunun yerine güvenli bir tempo uyguladım — bu hedefe gerçekçi süre yaklaşık <b>${rw} hafta</b>.`,
+      planFloor:(min)=>`Hesaplanan hedef çok düşük çıktığı için günlük kaloriyi güvenli alt sınıra (${min} kcal) sabitledim.`,
+      weightGoalLine:(g)=>`hedef ${g} kg`,
+      weightNote:(s,g,so)=>`Başlangıç: ${s} kg · Hedef: ${g} kg · Şu ana kadar: ${so} kg`,
+    },
+    en: {
+      onboardIntro:'I need a few details before we start.',
+      labelHeight:'Height (cm)', phHeight:'e.g. 178',
+      labelWeight:'Current weight (kg)', phWeight:'e.g. 82',
+      labelGoalWeight:'Goal weight (kg)', phGoalWeight:'e.g. 75',
+      labelAge:'Age', phAge:'e.g. 34',
+      labelSex:'Sex', sexMale:'Male', sexFemale:'Female', sexUnspec:'Prefer not to say',
+      labelActivity:'Activity level',
+      activityLow:'Low activity (mostly desk-based)',
+      activityMid:'Moderately active (a few workouts a week)',
+      activityHigh:'Active (daily exercise / physical job)',
+      labelWeeks:'In how many weeks do you want to reach this goal?', phWeeks:'e.g. 4',
+      onboardNote:"Note: if your goal exceeds a safe pace of 0.5–1 kg per week, I'll automatically adjust it to a safer pace and suggest a realistic timeframe.",
+      start:'Start',
+      onboardDisclaimer:'This tool is for general information only and is not medical advice. For significant weight goals, consider consulting a doctor or dietitian.',
+      alertFillFields:'Please fill in height, weight, goal weight, and age.',
+      settingsTooltip:'Edit profile',
+      tabToday:'Today', tabWeight:'Weight', tabTips:'Tips',
+      pillOver:"a bit over, that's okay", pillGood:"you're on track",
+      foodSectionTitle:'What did you eat today?',
+      langNote:'≈5000 foods/drinks, searchable in 3 languages',
+      foodPlaceholder:'e.g. elma / apple / Apfel',
+      foodHint:"Tap a suggestion from the list and the calories fill in automatically. If it's not listed, enter the calories manually.",
+      add:'Add', entryEmpty:'No entries yet.',
+      weightSectionTitle:'Weight tracking',
+      weightChartEmpty:'Once you log at least 2 weight entries, a chart will appear here.',
+      weightLabel:"Today's weight (kg)", save:'Save',
+      tipsTitle1:'General nutrition tips',
+      tips1:[
+        'Make sure each meal includes protein (eggs, yogurt, legumes, lean meat/fish) — it keeps you fuller for longer.',
+        'Prioritize vegetables and whole grains, and cut back on processed/sugary foods.',
+        'Drink enough water; thirst is sometimes mistaken for hunger.',
+        "Aim for balanced, sustainable portions instead of extreme restriction — that's what works long-term.",
+      ],
+      tipsTitle2:'Simple movement tips',
+      tips2:[
+        '7,000–10,000 steps a day is a solid baseline goal; you can split it into short walks.',
+        'Basic strength work 2-3 days a week (squats, planks, resistance bands) helps preserve muscle mass.',
+        'Small habits like taking the stairs or walking short distances add up over time.',
+      ],
+      tipsDisclaimer:'These general tips are not a substitute for medical or dietitian advice.',
+      kcalRemaining:(r)=>`${r} kcal left`,
+      kcalOver:(x)=>`${x} kcal over target`,
+      overNote:(steps)=>`Today went a bit over, no big deal — one day doesn't change the big picture. If you'd like to balance it out, a walk of about ${steps} steps could help.`,
+      planCapped:(w,kg,rw)=>`Losing ${kg} kg in the time you set (${w} weeks) exceeds a healthy pace. I applied a safer pace instead — a realistic timeframe for this goal is about <b>${rw} weeks</b>.`,
+      planFloor:(min)=>`Since the calculated target was too low, I capped your daily calories at the safe minimum (${min} kcal).`,
+      weightGoalLine:(g)=>`goal ${g} kg`,
+      weightNote:(s,g,so)=>`Starting: ${s} kg · Goal: ${g} kg · So far: ${so} kg`,
+    },
+    de: {
+      onboardIntro:'Bevor wir starten, brauche ich ein paar Angaben.',
+      labelHeight:'Größe (cm)', phHeight:'z.B. 178',
+      labelWeight:'Aktuelles Gewicht (kg)', phWeight:'z.B. 82',
+      labelGoalWeight:'Zielgewicht (kg)', phGoalWeight:'z.B. 75',
+      labelAge:'Alter', phAge:'z.B. 34',
+      labelSex:'Geschlecht', sexMale:'Männlich', sexFemale:'Weiblich', sexUnspec:'Keine Angabe',
+      labelActivity:'Aktivitätslevel',
+      activityLow:'Wenig aktiv (überwiegend sitzend)',
+      activityMid:'Mäßig aktiv (einige Workouts pro Woche)',
+      activityHigh:'Aktiv (tägliches Training / körperliche Arbeit)',
+      labelWeeks:'In wie vielen Wochen möchtest du dieses Ziel erreichen?', phWeeks:'z.B. 4',
+      onboardNote:'Hinweis: Ziele, die mehr als 0,5–1 kg pro Woche vorsehen, passe ich automatisch auf ein sicheres Tempo an und schlage einen realistischen Zeitraum vor.',
+      start:'Starten',
+      onboardDisclaimer:'Dieses Tool dient nur zur allgemeinen Information und ersetzt keine medizinische Beratung. Bei größeren Gewichtszielen ist es sinnvoll, einen Arzt oder Ernährungsberater zu konsultieren.',
+      alertFillFields:'Bitte Größe, Gewicht, Zielgewicht und Alter ausfüllen.',
+      settingsTooltip:'Profil bearbeiten',
+      tabToday:'Heute', tabWeight:'Gewicht', tabTips:'Tipps',
+      pillOver:'etwas drüber, kein Problem', pillGood:'du bist auf Kurs',
+      foodSectionTitle:'Was hast du heute gegessen?',
+      langNote:'≈5000 Lebensmittel/Getränke, in 3 Sprachen durchsuchbar',
+      foodPlaceholder:'z.B. elma / apple / Apfel',
+      foodHint:'Tippe auf einen Vorschlag aus der Liste, dann werden die Kalorien automatisch ausgefüllt. Falls nicht gelistet, gib die Kalorien manuell ein.',
+      add:'Hinzufügen', entryEmpty:'Noch keine Einträge.',
+      weightSectionTitle:'Gewichtsverlauf',
+      weightChartEmpty:'Sobald du mindestens 2 Gewichtswerte eingetragen hast, erscheint hier ein Diagramm.',
+      weightLabel:'Heutiges Gewicht (kg)', save:'Speichern',
+      tipsTitle1:'Allgemeine Ernährungstipps',
+      tips1:[
+        'Achte darauf, dass jede Mahlzeit Protein enthält (Eier, Joghurt, Hülsenfrüchte, mageres Fleisch/Fisch) — das hält länger satt.',
+        'Bevorzuge Gemüse und Vollkornprodukte, reduziere verarbeitete/zuckerhaltige Lebensmittel.',
+        'Trinke ausreichend Wasser; Durst wird manchmal mit Hunger verwechselt.',
+        'Setze auf ausgewogene, nachhaltige Portionen statt extremer Einschränkung — das funktioniert langfristig.',
+      ],
+      tipsTitle2:'Einfache Bewegungstipps',
+      tips2:[
+        '7.000–10.000 Schritte am Tag sind ein gutes Grundziel; du kannst es auf kurze Spaziergänge aufteilen.',
+        'Grundlegendes Krafttraining an 2-3 Tagen pro Woche (Kniebeugen, Plank, Widerstandsbänder) erhält die Muskelmasse.',
+        'Kleine Gewohnheiten wie Treppensteigen oder kurze Strecken zu Fuß machen in der Summe einen Unterschied.',
+      ],
+      tipsDisclaimer:'Diese allgemeinen Tipps ersetzen keine ärztliche oder ernährungsberaterische Beratung.',
+      kcalRemaining:(r)=>`noch ${r} kcal`,
+      kcalOver:(x)=>`${x} kcal über dem Ziel`,
+      overNote:(steps)=>`Heute war etwas zu viel, kein Problem — ein einzelner Tag ändert nichts am großen Ganzen. Wenn du ausgleichen möchtest, könnten etwa ${steps} Schritte spazieren helfen.`,
+      planCapped:(w,kg,rw)=>`${kg} kg in der von dir angegebenen Zeit (${w} Wochen) zu verlieren, übersteigt ein gesundes Tempo. Ich habe stattdessen ein sicheres Tempo angewendet — ein realistischer Zeitraum für dieses Ziel liegt bei etwa <b>${rw} Wochen</b>.`,
+      planFloor:(min)=>`Da das berechnete Ziel zu niedrig war, habe ich die Tageskalorien auf das sichere Minimum (${min} kcal) begrenzt.`,
+      weightGoalLine:(g)=>`Ziel ${g} kg`,
+      weightNote:(s,g,so)=>`Start: ${s} kg · Ziel: ${g} kg · Bisher: ${so} kg`,
+    },
+  };
 
   function init(rootId){
     const root = document.getElementById(rootId);
@@ -17,11 +169,13 @@ window.DengeApp = (function(){
     let data = null;
     let activeTab = 'today';
     let foodLang = 'tr';
+    let lang = 'tr';
 
+    function t(key){ return (STRINGS[lang] || STRINGS.tr)[key]; }
     function todayKey(){ return new Date().toISOString().slice(0,10); }
     function fmtDate(k){
       const d = new Date(k+'T00:00:00');
-      return d.toLocaleDateString('tr-TR', {day:'numeric', month:'long'});
+      return d.toLocaleDateString(LOCALE[lang] || 'tr-TR', {day:'numeric', month:'long'});
     }
 
     function loadData(){
@@ -31,9 +185,8 @@ window.DengeApp = (function(){
       }catch(e){
         data = { profile:null, days:{} };
       }
-      try{
-        foodLang = localStorage.getItem(LANG_KEY_KEY) || 'tr';
-      }catch(e){ foodLang = 'tr'; }
+      try{ foodLang = localStorage.getItem(FOOD_LANG_KEY) || 'tr'; }catch(e){ foodLang = 'tr'; }
+      try{ lang = localStorage.getItem(APP_LANG_KEY) || 'tr'; }catch(e){ lang = 'tr'; }
       render();
     }
 
@@ -41,8 +194,8 @@ window.DengeApp = (function(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
       catch(e){ console.error('Kaydetme hatası', e); }
     }
-    function persistLang(){
-      try{ localStorage.setItem(LANG_KEY_KEY, foodLang); }catch(e){}
+    function persistFoodLang(){
+      try{ localStorage.setItem(FOOD_LANG_KEY, foodLang); }catch(e){}
     }
 
     function getDay(key){
@@ -106,46 +259,46 @@ window.DengeApp = (function(){
     function onboardingHTML(){
       return `
         <h1 class="d-h1">Denge</h1>
-        <div class="d-sub">Başlamadan önce birkaç bilgiye ihtiyacım var.</div>
+        <div class="d-sub">${t('onboardIntro')}</div>
         <div class="d-card">
-          <label>Boy (cm)</label>
-          <input id="d-ob-height" type="number" placeholder="örn. 178" inputmode="decimal">
+          <label>${t('labelHeight')}</label>
+          <input id="d-ob-height" type="number" placeholder="${t('phHeight')}" inputmode="decimal">
           <div class="d-grid2">
             <div>
-              <label>Mevcut kilo (kg)</label>
-              <input id="d-ob-weight" type="number" placeholder="örn. 82" inputmode="decimal">
+              <label>${t('labelWeight')}</label>
+              <input id="d-ob-weight" type="number" placeholder="${t('phWeight')}" inputmode="decimal">
             </div>
             <div>
-              <label>Hedef kilo (kg)</label>
-              <input id="d-ob-goal" type="number" placeholder="örn. 75" inputmode="decimal">
+              <label>${t('labelGoalWeight')}</label>
+              <input id="d-ob-goal" type="number" placeholder="${t('phGoalWeight')}" inputmode="decimal">
             </div>
           </div>
           <div class="d-grid2">
             <div>
-              <label>Yaş</label>
-              <input id="d-ob-age" type="number" placeholder="örn. 34" inputmode="numeric">
+              <label>${t('labelAge')}</label>
+              <input id="d-ob-age" type="number" placeholder="${t('phAge')}" inputmode="numeric">
             </div>
             <div>
-              <label>Cinsiyet</label>
+              <label>${t('labelSex')}</label>
               <select id="d-ob-sex">
-                <option value="erkek">Erkek</option>
-                <option value="kadin">Kadın</option>
-                <option value="belirtmiyorum">Belirtmiyorum</option>
+                <option value="erkek">${t('sexMale')}</option>
+                <option value="kadin">${t('sexFemale')}</option>
+                <option value="belirtmiyorum">${t('sexUnspec')}</option>
               </select>
             </div>
           </div>
-          <label>Aktivite seviyesi</label>
+          <label>${t('labelActivity')}</label>
           <select id="d-ob-activity">
-            <option value="az">Az hareketli (çoğunlukla masa başı)</option>
-            <option value="orta" selected>Orta aktif (haftada birkaç egzersiz)</option>
-            <option value="aktif">Aktif (günlük egzersiz / fiziksel iş)</option>
+            <option value="az">${t('activityLow')}</option>
+            <option value="orta" selected>${t('activityMid')}</option>
+            <option value="aktif">${t('activityHigh')}</option>
           </select>
-          <label>Bu hedefe kaç haftada ulaşmak istersin?</label>
-          <input id="d-ob-weeks" type="number" placeholder="örn. 4" inputmode="numeric">
-          <div class="d-note">Not: Haftada 0,5–1 kg dışına çıkan hedefleri otomatik olarak güvenli bir tempoya göre ayarlarım, gerçekçi bir süre önerisiyle.</div>
-          <button class="d-btn-primary" id="d-ob-submit">Başla</button>
+          <label>${t('labelWeeks')}</label>
+          <input id="d-ob-weeks" type="number" placeholder="${t('phWeeks')}" inputmode="numeric">
+          <div class="d-note">${t('onboardNote')}</div>
+          <button class="d-btn-primary" id="d-ob-submit">${t('start')}</button>
         </div>
-        <div class="d-disclaimer">Bu araç genel bilgi amaçlıdır, tıbbi tavsiye yerine geçmez. Önemli kilo hedefleri için bir doktor veya diyetisyene danışman iyi olur.</div>
+        <div class="d-disclaimer">${t('onboardDisclaimer')}</div>
       `;
     }
 
@@ -164,7 +317,7 @@ window.DengeApp = (function(){
       root.querySelector('#d-ob-submit').onclick = () => {
         const f = readOnboardingForm();
         if(!f.height || !f.weight || !f.goalWeight || !f.age){
-          alert('Lütfen boy, kilo, hedef kilo ve yaş alanlarını doldur.');
+          alert(t('alertFillFields'));
           return;
         }
         data.profile = { ...f, startWeight: f.weight, startDate: todayKey() };
@@ -177,7 +330,7 @@ window.DengeApp = (function(){
       const days = Object.keys(data.days).filter(k => data.days[k].weight != null).sort();
       const w = 480, h = 130, pad = 24;
       if(days.length < 2){
-        return `<div class="d-empty" style="text-align:center;padding:24px 0;">En az 2 kilo ölçümü girince burada bir grafik göreceksin.</div>`;
+        return `<div class="d-empty" style="text-align:center;padding:24px 0;">${t('weightChartEmpty')}</div>`;
       }
       const weights = days.map(k => data.days[k].weight);
       const goal = data.profile.goalWeight;
@@ -191,7 +344,7 @@ window.DengeApp = (function(){
       return `
         <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px;">
           <line x1="${pad}" y1="${goalY}" x2="${w-pad}" y2="${goalY}" stroke="var(--d-warn)" stroke-dasharray="4 4" stroke-width="1.5"/>
-          <text x="${w-pad}" y="${goalY-6}" text-anchor="end" font-size="11" fill="var(--d-warn)">hedef ${goal} kg</text>
+          <text x="${w-pad}" y="${goalY-6}" text-anchor="end" font-size="11" fill="var(--d-warn)">${t('weightGoalLine')(goal)}</text>
           <path d="${pathD}" fill="none" stroke="var(--d-accent)" stroke-width="2.5"/>
           ${dots}
         </svg>
@@ -210,9 +363,9 @@ window.DengeApp = (function(){
 
       let planNote = '';
       if(plan.wasCapped){
-        planNote = `<div class="d-note warn">Girdiğin sürede (${plan.requestedWeeks} hafta) ${plan.kgToLose.toFixed(1)} kg vermek sağlıklı hız sınırını aşıyor. Bunun yerine güvenli bir tempo uyguladım — bu hedefe gerçekçi süre yaklaşık <b>${plan.realWeeks} hafta</b>.</div>`;
+        planNote = `<div class="d-note warn">${t('planCapped')(plan.requestedWeeks, plan.kgToLose.toFixed(1), plan.realWeeks)}</div>`;
       } else if(plan.adjustedForFloor){
-        planNote = `<div class="d-note warn">Hesaplanan hedef çok düşük çıktığı için günlük kaloriyi güvenli alt sınıra (${MIN_SAFE_KCAL} kcal) sabitledim.</div>`;
+        planNote = `<div class="d-note warn">${t('planFloor')(MIN_SAFE_KCAL)}</div>`;
       }
 
       return `
@@ -221,13 +374,13 @@ window.DengeApp = (function(){
             <h1 class="d-h1">Denge</h1>
             <div class="d-sub">${fmtDate(key)}</div>
           </div>
-          <button class="d-gear" id="d-open-settings" title="Profili düzenle">⚙︎</button>
+          <button class="d-gear" id="d-open-settings" title="${t('settingsTooltip')}">⚙︎</button>
         </div>
 
         <div class="d-tabbar">
-          <button data-tab="today" class="${activeTab==='today'?'active':''}">Bugün</button>
-          <button data-tab="weight" class="${activeTab==='weight'?'active':''}">Kilo</button>
-          <button data-tab="tips" class="${activeTab==='tips'?'active':''}">Öneriler</button>
+          <button data-tab="today" class="${activeTab==='today'?'active':''}">${t('tabToday')}</button>
+          <button data-tab="weight" class="${activeTab==='weight'?'active':''}">${t('tabWeight')}</button>
+          <button data-tab="tips" class="${activeTab==='tips'?'active':''}">${t('tabTips')}</button>
         </div>
 
         ${activeTab==='today' ? `
@@ -236,8 +389,8 @@ window.DengeApp = (function(){
             ${ringSVG(pct, over)}
             <div class="d-ring-nums">
               <div class="d-kcal-big">${consumed} <span style="font-size:16px;color:var(--d-ink-soft);font-weight:500;">/ ${plan.target} kcal</span></div>
-              <div class="d-kcal-label">${over ? `${Math.abs(remaining)} kcal hedefin üzerinde` : `${remaining} kcal kaldı`}</div>
-              <div class="d-pill ${over?'warn':''}">${over ? 'biraz aştın, sorun değil' : 'yolunda gidiyorsun'}</div>
+              <div class="d-kcal-label">${over ? t('kcalOver')(Math.abs(remaining)) : t('kcalRemaining')(remaining)}</div>
+              <div class="d-pill ${over?'warn':''}">${over ? t('pillOver') : t('pillGood')}</div>
             </div>
           </div>
           ${over ? overNote(Math.abs(remaining), p.weight) : ''}
@@ -245,24 +398,24 @@ window.DengeApp = (function(){
         </div>
 
         <div class="d-card">
-          <div class="d-section-title">Bugün ne yedin?</div>
+          <div class="d-section-title">${t('foodSectionTitle')}</div>
           <div class="d-lang-pills">
             <button data-lang="tr" class="${foodLang==='tr'?'active':''}">TR</button>
             <button data-lang="en" class="${foodLang==='en'?'active':''}">EN</button>
             <button data-lang="de" class="${foodLang==='de'?'active':''}">DE</button>
-            <span class="d-lang-note">≈5000 yiyecek/içecek, 3 dilde aranabilir</span>
+            <span class="d-lang-note">${t('langNote')}</span>
           </div>
           <div class="d-grid2" style="margin-top:10px;">
             <div style="position:relative;">
-              <input id="d-new-food" type="text" placeholder="ör. elma / apple / Apfel" autocomplete="off">
+              <input id="d-new-food" type="text" placeholder="${t('foodPlaceholder')}" autocomplete="off">
               <div id="d-suggestions" class="d-suggestions"></div>
             </div>
             <input id="d-new-kcal" type="number" placeholder="kcal" inputmode="numeric">
           </div>
-          <div class="d-note" style="margin-top:8px;">Listeden bir öneriye dokunursan kalori otomatik dolar. Listede yoksa kalori kısmını elle gir.</div>
-          <button class="d-btn-primary" id="d-add-entry">Ekle</button>
+          <div class="d-note" style="margin-top:8px;">${t('foodHint')}</div>
+          <button class="d-btn-primary" id="d-add-entry">${t('add')}</button>
           <div class="d-entry-list">
-            ${day.entries.length === 0 ? '<div class="d-empty">Henüz kayıt yok.</div>' :
+            ${day.entries.length === 0 ? `<div class="d-empty">${t('entryEmpty')}</div>` :
               day.entries.map(e => `
                 <div class="d-entry">
                   <span>${e.name}</span>
@@ -277,33 +430,28 @@ window.DengeApp = (function(){
 
         ${activeTab==='weight' ? `
         <div class="d-card">
-          <div class="d-section-title">Kilo takibi</div>
+          <div class="d-section-title">${t('weightSectionTitle')}</div>
           ${buildWeightSVG()}
-          <label>Bugünkü kilon (kg)</label>
+          <label>${t('weightLabel')}</label>
           <div class="d-row" style="gap:10px;align-items:stretch;">
             <input id="d-weight-input" type="number" inputmode="decimal" value="${day.weight ?? ''}" placeholder="örn. 80.5">
-            <button class="d-btn-primary" style="width:auto;margin-top:0;" id="d-save-weight">Kaydet</button>
+            <button class="d-btn-primary" style="width:auto;margin-top:0;" id="d-save-weight">${t('save')}</button>
           </div>
-          <div class="d-note">Başlangıç: ${p.startWeight} kg · Hedef: ${p.goalWeight} kg · Şu ana kadar: ${(p.startWeight - (day.weight ?? p.weight)).toFixed(1)} kg</div>
+          <div class="d-note">${t('weightNote')(p.startWeight, p.goalWeight, (p.startWeight - (day.weight ?? p.weight)).toFixed(1))}</div>
         </div>
         ` : ''}
 
         ${activeTab==='tips' ? `
         <div class="d-card">
-          <div class="d-section-title">Genel beslenme önerileri</div>
+          <div class="d-section-title">${t('tipsTitle1')}</div>
           <ul class="d-tips">
-            <li>Her öğünde protein bulunmasına dikkat et (yumurta, yoğurt, baklagiller, yağsız et/balık) — tokluk süresini uzatır.</li>
-            <li>Sebze ve tam tahılları öncelikli tut, işlenmiş/şekerli gıdaları azalt.</li>
-            <li>Yeterli su iç; bazen susuzluk açlıkla karışabilir.</li>
-            <li>Aşırı kısıtlama yerine dengeli, sürdürülebilir porsiyonlar hedefle — uzun vadede işe yarayan budur.</li>
+            ${t('tips1').map(x => `<li>${x}</li>`).join('')}
           </ul>
-          <div class="d-section-title" style="margin-top:16px;">Basit hareket önerileri</div>
+          <div class="d-section-title" style="margin-top:16px;">${t('tipsTitle2')}</div>
           <ul class="d-tips">
-            <li>Günde 7.000–10.000 adım iyi bir temel hedeftir; kısa yürüyüşlerle bölebilirsin.</li>
-            <li>Haftada 2-3 gün temel kuvvet çalışması (squat, plank, bantla direnç) kas kütlesini korur.</li>
-            <li>Merdiven kullanmak, kısa mesafeleri yürümek gibi küçük alışkanlıklar toplamda fark yaratır.</li>
+            ${t('tips2').map(x => `<li>${x}</li>`).join('')}
           </ul>
-          <div class="d-disclaimer" style="margin-top:16px;">Bu genel öneriler tıbbi/diyetisyen tavsiyesinin yerini tutmaz.</div>
+          <div class="d-disclaimer" style="margin-top:16px;">${t('tipsDisclaimer')}</div>
         </div>
         ` : ''}
       `;
@@ -329,7 +477,7 @@ window.DengeApp = (function(){
       let steps = Math.round(excessKcal / kcalPerStep);
       steps = Math.min(steps, 6000);
       steps = Math.round(steps/100)*100;
-      return `<div class="d-note">Bugün biraz fazla oldu, önemli değil — tek gün büyük resmi değiştirmez. İstersen dengelemek için ~${steps} adımlık bir yürüyüş iyi gelebilir.</div>`;
+      return `<div class="d-note">${t('overNote')(steps)}</div>`;
     }
 
     function renderSuggestions(query){
@@ -380,7 +528,7 @@ window.DengeApp = (function(){
       root.querySelectorAll('.d-lang-pills button[data-lang]').forEach(btn => {
         btn.onclick = () => {
           foodLang = btn.dataset.lang;
-          persistLang();
+          persistFoodLang();
           root.querySelectorAll('.d-lang-pills button[data-lang]').forEach(b => b.classList.toggle('active', b.dataset.lang===foodLang));
           const foodInput = root.querySelector('#d-new-food');
           if(foodInput && foodInput.value) renderSuggestions(foodInput.value);
@@ -432,6 +580,10 @@ window.DengeApp = (function(){
     }
 
     loadData();
+
+    return {
+      setLang(l){ lang = l; render(); },
+    };
   }
 
   return { init };
