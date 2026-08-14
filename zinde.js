@@ -132,11 +132,7 @@ window.ZindeApp = (function(){
     { id:'kegel', emoji:'🌸', target:15,
       name:{tr:'Farkındalık Egzersizi', en:'Awareness Exercise', de:'Achtsamkeitsübung'},
       unit:{tr:'tekrar', en:'reps', de:'Wiederholungen'},
-      how:{
-        tr:'Pelvik taban kaslarını (idrarı kesme hissi veren kaslar) sıkarak 3-5 saniye kasılı tut, sonra aynı süre boyunca gevşet. Otururken, ayaktayken ya da yatarken fark ettirmeden yapılabilir. Nefesini tutma, karın ve kalça kaslarını sıkmamaya dikkat et.',
-        en:"Squeeze the pelvic floor muscles (the ones you'd use to stop urine flow) and hold for 3-5 seconds, then release for the same amount of time. Can be done discreetly while sitting, standing, or lying down. Don't hold your breath, and avoid tensing your abs or glutes instead.",
-        de:'Spanne die Beckenbodenmuskulatur an (die Muskeln, mit denen man den Harnfluss stoppen würde) und halte 3-5 Sekunden, löse dann für die gleiche Zeit. Kann unauffällig im Sitzen, Stehen oder Liegen ausgeführt werden. Nicht die Luft anhalten und nicht stattdessen Bauch oder Gesäß anspannen.',
-      } },
+      how:null },
   ];
 
   // ---- basit stick-figure pozları (hareket görselleri) ----
