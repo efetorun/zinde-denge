@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zinde-denge-cache-v1';
+const CACHE_NAME = 'zinde-denge-cache-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -26,8 +26,16 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first: her zaman güncel sürümü almaya çalış, çevrimdışıysa önbelleğe düş.
 self.addEventListener('fetch', (event) => {
+  if(event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).catch(() => cached))
+    fetch(event.request)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
