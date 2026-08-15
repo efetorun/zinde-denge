@@ -13,6 +13,7 @@ window.ZindeApp = (function(){
       pillDone:'bugünü tamamladın 🎉', pillContinue:'devam et',
       target:'hedef:',
       howToggle:'Nasıl yapılır?',
+      countHint:'Sayıya dokunup klavyeyle de yazabilirsin',
       historyEmpty:'Henüz geçmiş kayıt yok. Bugünkü hareketlerini ekleyince burada görünecek.',
       goalsIntro:'Günlük hedef sayılarını kendine göre ayarla.',
       save:'Kaydet',
@@ -25,6 +26,7 @@ window.ZindeApp = (function(){
       pillDone:'you completed today 🎉', pillContinue:'keep going',
       target:'target:',
       howToggle:'How to do it?',
+      countHint:'You can also tap the number and type it in',
       historyEmpty:"No history yet. It will appear here once you log today's activity.",
       goalsIntro:'Adjust your daily goal numbers to fit you.',
       save:'Save',
@@ -37,6 +39,7 @@ window.ZindeApp = (function(){
       pillDone:'Heute geschafft 🎉', pillContinue:'weiter so',
       target:'Ziel:',
       howToggle:'Wie geht das?',
+      countHint:'Du kannst die Zahl auch antippen und eingeben',
       historyEmpty:'Noch kein Verlauf. Er erscheint hier, sobald du deine heutigen Aktivitäten einträgst.',
       goalsIntro:'Passe deine täglichen Zielwerte an dich an.',
       save:'Speichern',
@@ -337,6 +340,7 @@ window.ZindeApp = (function(){
             <input class="z-ex-count-input" type="number" inputmode="numeric" min="0" step="1" data-count-input="${g.id}" value="${count}">
             <button class="z-ex-btn" data-plus="${g.id}">+</button>
           </div>
+          <div class="z-count-hint">${t('countHint')}</div>
           ${howText ? `
             <button class="z-how-toggle" data-how="${g.id}">${t('howToggle')} ${howOpen ? '▴' : '▾'}</button>
             ${howOpen ? `<div class="z-how-box">${howSVG(g.id)}${howText}</div>` : ''}
@@ -429,6 +433,7 @@ window.ZindeApp = (function(){
       });
 
       root.querySelectorAll('[data-count-input]').forEach(inp => {
+        inp.addEventListener('focus', () => inp.select());
         inp.addEventListener('change', () => commitCount(inp.dataset.countInput, inp.value));
         inp.addEventListener('keydown', (e) => { if(e.key === 'Enter') inp.blur(); });
       });

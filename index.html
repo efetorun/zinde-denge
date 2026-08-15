@@ -95,13 +95,16 @@
   #app-zinde .z-ex-bar-fill.done{background:var(--z-good);}
   #app-zinde .z-ex-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:14px;}
   #app-zinde .z-ex-count-input{
-    font-size:24px;font-weight:800;min-width:64px;max-width:92px;text-align:center;color:var(--z-ink);
-    border:none;border-bottom:2px solid transparent;background:transparent;font-family:inherit;
-    padding:2px 0;-moz-appearance:textfield;
+    font-size:24px;font-weight:800;width:92px;text-align:center;color:var(--z-ink);
+    border:1px solid var(--z-border);border-radius:10px;background:var(--z-bg);
+    font-family:inherit;padding:6px 4px;-moz-appearance:textfield;cursor:text;
   }
   #app-zinde .z-ex-count-input::-webkit-outer-spin-button,
   #app-zinde .z-ex-count-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-  #app-zinde .z-ex-count-input:focus{outline:none;border-bottom-color:var(--z-accent);}
+  #app-zinde .z-ex-count-input:focus{outline:2px solid var(--z-accent);outline-offset:1px;border-color:var(--z-accent);background:#fff;}
+  #app-zinde .z-count-hint{
+    text-align:center;font-size:11px;color:var(--z-ink-soft);margin-top:6px;
+  }
   #app-zinde .z-ex-btn{width:44px;height:44px;border-radius:50%;background:var(--z-bg);border:1px solid var(--z-border);font-size:20px;font-weight:700;color:var(--z-ink);display:flex;align-items:center;justify-content:center;line-height:1;}
   #app-zinde .z-ex-btn:active{background:var(--z-accent-soft);}
   #app-zinde .z-ex-btn.minus{color:var(--z-ink-soft);}
