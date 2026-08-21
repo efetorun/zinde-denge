@@ -4,6 +4,7 @@ window.ZindeApp = (function(){
   const STORAGE_KEY = 'zinde-app-data-v1';
   const LANG_KEY = 'app-lang-v1';
   const LOCALE = { tr:'tr-TR', en:'en-US', de:'de-DE' };
+  const MAX_TIMER_SEC = 600; // 10 dakika
 
   const STRINGS = {
     tr: {
@@ -14,6 +15,15 @@ window.ZindeApp = (function(){
       target:'hedef:',
       howToggle:'Nasıl yapılır?',
       countHint:'Sayıya dokunup klavyeyle de yazabilirsin',
+      timerOpen:'Kronometre', timerStart:'Başlat', timerPause:'Duraklat',
+      timerFinish:'Bitir ve ekle', timerReset:'Sıfırla', timerMaxNote:'En fazla 10 dakika',
+      stepsInfo:'Adım sayısını telefonundaki sağlık uygulamasından (Adımlar / Google Fit / Samsung Health) bakıp buraya yazabilirsin.',
+      pedStart:'📱 Sensörle say', pedStop:'⏹ Sayımı durdur',
+      pedOnNote:'Sensör açık — telefonu cebinde ya da elinde taşı. Sayfa açık kalmalı.',
+      pedSession:'Bu oturumda sayılan',
+      pedAccuracy:'Sensörle sayım yaklaşıktır, gerçek adım sayısından sapabilir. Sayıyı istediğin zaman elle düzeltebilirsin.',
+      pedUnsupported:'Bu cihaz veya tarayıcı hareket sensörünü desteklemiyor. Sayıyı elle girebilirsin.',
+      pedDenied:'Sensör izni verilmedi. Sayıyı elle girebilirsin.',
       historyEmpty:'Henüz geçmiş kayıt yok. Bugünkü hareketlerini ekleyince burada görünecek.',
       goalsIntro:'Günlük hedef sayılarını kendine göre ayarla.',
       save:'Kaydet',
@@ -27,6 +37,15 @@ window.ZindeApp = (function(){
       target:'target:',
       howToggle:'How to do it?',
       countHint:'You can also tap the number and type it in',
+      timerOpen:'Stopwatch', timerStart:'Start', timerPause:'Pause',
+      timerFinish:'Finish & add', timerReset:'Reset', timerMaxNote:'Up to 10 minutes',
+      stepsInfo:"You can check your step count in your phone's health app (Steps / Google Fit / Samsung Health) and enter it here.",
+      pedStart:'📱 Count with sensor', pedStop:'⏹ Stop counting',
+      pedOnNote:'Sensor is on — keep your phone in your pocket or hand. This page must stay open.',
+      pedSession:'Counted this session',
+      pedAccuracy:'Sensor-based counting is approximate and may differ from your real step count. You can correct the number manually at any time.',
+      pedUnsupported:'This device or browser does not support the motion sensor. You can enter the number manually.',
+      pedDenied:'Sensor permission was not granted. You can enter the number manually.',
       historyEmpty:"No history yet. It will appear here once you log today's activity.",
       goalsIntro:'Adjust your daily goal numbers to fit you.',
       save:'Save',
@@ -40,6 +59,15 @@ window.ZindeApp = (function(){
       target:'Ziel:',
       howToggle:'Wie geht das?',
       countHint:'Du kannst die Zahl auch antippen und eingeben',
+      timerOpen:'Stoppuhr', timerStart:'Start', timerPause:'Pause',
+      timerFinish:'Beenden & hinzufügen', timerReset:'Zurücksetzen', timerMaxNote:'Bis zu 10 Minuten',
+      stepsInfo:'Du kannst deine Schrittzahl in der Gesundheits-App deines Handys (Schritte / Google Fit / Samsung Health) nachsehen und hier eintragen.',
+      pedStart:'📱 Mit Sensor zählen', pedStop:'⏹ Zählung stoppen',
+      pedOnNote:'Sensor ist an — trage das Handy in der Tasche oder Hand. Diese Seite muss geöffnet bleiben.',
+      pedSession:'In dieser Sitzung gezählt',
+      pedAccuracy:'Die Sensorzählung ist ungefähr und kann von der echten Schrittzahl abweichen. Du kannst die Zahl jederzeit manuell korrigieren.',
+      pedUnsupported:'Dieses Gerät oder dieser Browser unterstützt den Bewegungssensor nicht. Du kannst die Zahl manuell eingeben.',
+      pedDenied:'Sensorberechtigung wurde nicht erteilt. Du kannst die Zahl manuell eingeben.',
       historyEmpty:'Noch kein Verlauf. Er erscheint hier, sobald du deine heutigen Aktivitäten einträgst.',
       goalsIntro:'Passe deine täglichen Zielwerte an dich an.',
       save:'Speichern',
@@ -72,7 +100,7 @@ window.ZindeApp = (function(){
         en:'Stand with feet shoulder-width apart, back straight. Push your hips back and down as if sitting into a chair, keeping your knees behind your toes. Once your thighs are parallel to the floor, drive through your heels to stand back up.',
         de:'Stelle dich mit schulterbreiten Füßen hin, Rücken gerade. Schiebe die Hüfte nach hinten und unten, als würdest du dich auf einen Stuhl setzen, die Knie bleiben hinter den Zehen. Wenn die Oberschenkel parallel zum Boden sind, drücke dich über die Fersen wieder nach oben.',
       } },
-    { id:'plank', emoji:'🧘', target:60,
+    { id:'plank', emoji:'🧘', target:60, timer:true,
       name:{tr:'Plank', en:'Plank', de:'Unterarmstütz'},
       unit:{tr:'saniye', en:'seconds', de:'Sekunden'},
       how:{
@@ -131,6 +159,10 @@ window.ZindeApp = (function(){
     { id:'water', emoji:'💧', target:10,
       name:{tr:'Su', en:'Water', de:'Wasser'},
       unit:{tr:'bardak', en:'glasses', de:'Gläser'},
+      how:null },
+    { id:'steps', emoji:'👟', target:10000, stepSize:500, infoKey:'stepsInfo', sensor:true,
+      name:{tr:'Adım', en:'Steps', de:'Schritte'},
+      unit:{tr:'adım', en:'steps', de:'Schritte'},
       how:null },
     { id:'kegel', emoji:'🌸', target:15,
       name:{tr:'Farkındalık Egzersizi', en:'Awareness Exercise', de:'Achtsamkeitsübung'},
@@ -208,6 +240,108 @@ window.ZindeApp = (function(){
     let openHistDate = null;
     let openHowId = null;
     let lang = 'tr';
+    let timer = { id:null, elapsed:0, running:false, handle:null };
+
+    function fmtClock(sec){
+      const m = Math.floor(sec/60), s = sec%60;
+      return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+
+    function stopTimerTick(){
+      if(timer.handle){ clearInterval(timer.handle); timer.handle = null; }
+      timer.running = false;
+    }
+
+    function paintTimer(){
+      const disp = root.querySelector('#z-timer-display');
+      if(disp) disp.textContent = fmtClock(timer.elapsed);
+      const bar = root.querySelector('#z-timer-bar');
+      if(bar) bar.style.width = Math.min(100, (timer.elapsed / MAX_TIMER_SEC) * 100) + '%';
+    }
+
+    function startTimerTick(){
+      stopTimerTick();
+      timer.running = true;
+      timer.handle = setInterval(() => {
+        timer.elapsed++;
+        if(timer.elapsed >= MAX_TIMER_SEC){
+          timer.elapsed = MAX_TIMER_SEC;
+          stopTimerTick();
+          render();
+          return;
+        }
+        paintTimer();
+      }, 1000);
+    }
+
+    // ---- adım sensörü (yaklaşık pedometre) ----
+    // Telefonun ivmeölçerinden yürüyüş ritmini tespit eder. Kesin değildir,
+    // bu yüzden kullanıcı sayıyı her zaman elle düzeltebilir.
+    const PED_THRESHOLD = 1.15;    // yumuşatılmış ortalamanın üzerindeki eşik
+    const PED_MIN_INTERVAL = 260;  // iki adım arası en az ms (max ~230 adım/dk)
+    let ped = { on:false, session:0, avg:9.81, lastDiff:0, lastTs:0, msg:null, wake:null };
+
+    function onMotion(e){
+      const a = e.accelerationIncludingGravity;
+      if(!a || a.x == null) return;
+      const mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+      ped.avg = ped.avg * 0.9 + mag * 0.1;      // düşük geçirgen filtre
+      const diff = mag - ped.avg;
+      const now = Date.now();
+      // aşağıdan yukarı eşik geçişi = bir adım
+      if(ped.lastDiff <= PED_THRESHOLD && diff > PED_THRESHOLD && (now - ped.lastTs) > PED_MIN_INTERVAL){
+        ped.lastTs = now;
+        ped.session++;
+        const day = getDay(todayKey());
+        day.counts.steps = (day.counts.steps || 0) + 1;
+        persist();
+        paintSteps();
+      }
+      ped.lastDiff = diff;
+    }
+
+    function paintSteps(){
+      const day = getDay(todayKey());
+      const val = day.counts.steps || 0;
+      const g = data.goals.find(x => x.id === 'steps');
+      const inp = root.querySelector('[data-count-input="steps"]');
+      if(inp && document.activeElement !== inp) inp.value = val;
+      const bar = root.querySelector('[data-bar="steps"]');
+      if(bar && g) bar.style.width = Math.min(100, Math.round((val / g.target) * 100)) + '%';
+      const ses = root.querySelector('#z-ped-session');
+      if(ses) ses.textContent = ped.session;
+    }
+
+    async function startPedometer(){
+      ped.msg = null;
+      if(typeof DeviceMotionEvent === 'undefined'){
+        ped.msg = 'pedUnsupported'; render(); return;
+      }
+      try{
+        if(typeof DeviceMotionEvent.requestPermission === 'function'){
+          const res = await DeviceMotionEvent.requestPermission();
+          if(res !== 'granted'){ ped.msg = 'pedDenied'; render(); return; }
+        }
+      }catch(err){ ped.msg = 'pedDenied'; render(); return; }
+
+      window.addEventListener('devicemotion', onMotion);
+      ped.on = true;
+      ped.session = 0;
+      ped.avg = 9.81; ped.lastDiff = 0; ped.lastTs = 0;
+      try{
+        if(navigator.wakeLock && navigator.wakeLock.request){
+          ped.wake = await navigator.wakeLock.request('screen');
+        }
+      }catch(err){ /* ekran kilidi opsiyonel */ }
+      render();
+    }
+
+    function stopPedometer(){
+      window.removeEventListener('devicemotion', onMotion);
+      ped.on = false;
+      if(ped.wake){ try{ ped.wake.release(); }catch(err){} ped.wake = null; }
+      render();
+    }
 
     function todayKey(){ return new Date().toISOString().slice(0,10); }
     function fmtDate(k){
@@ -334,17 +468,63 @@ window.ZindeApp = (function(){
               <div class="z-ex-target">${t('target')} ${g.target} ${g.unit[lang] || g.unit.tr}</div>
             </div>
           </div>
-          <div class="z-ex-bar-track"><div class="z-ex-bar-fill ${done?'done':''}" style="width:${pct}%"></div></div>
+          <div class="z-ex-bar-track"><div class="z-ex-bar-fill ${done?'done':''}" data-bar="${g.id}" style="width:${pct}%"></div></div>
           <div class="z-ex-controls">
             <button class="z-ex-btn minus" data-minus="${g.id}">−</button>
             <input class="z-ex-count-input" type="number" inputmode="numeric" min="0" step="1" data-count-input="${g.id}" value="${count}">
             <button class="z-ex-btn" data-plus="${g.id}">+</button>
           </div>
-          <div class="z-count-hint">${t('countHint')}</div>
+          <div class="z-count-hint">${t('countHint')}${g.stepSize ? ` · +/− = ${g.stepSize}` : ''}</div>
+          ${g.timer ? timerHTML(g) : ''}
+          ${g.sensor ? sensorHTML(g) : ''}
+          ${g.infoKey ? `<div class="z-info-box">${t(g.infoKey)}</div>` : ''}
           ${howText ? `
             <button class="z-how-toggle" data-how="${g.id}">${t('howToggle')} ${howOpen ? '▴' : '▾'}</button>
             ${howOpen ? `<div class="z-how-box">${howSVG(g.id)}${howText}</div>` : ''}
           ` : ''}
+        </div>
+      `;
+    }
+
+    function sensorHTML(g){
+      const msg = ped.msg ? `<div class="z-ped-msg">${t(ped.msg)}</div>` : '';
+      if(!ped.on){
+        return `
+          <button class="z-ped-btn start" data-ped-start="1">${t('pedStart')}</button>
+          ${msg}
+        `;
+      }
+      return `
+        <div class="z-ped-box">
+          <div class="z-ped-live"><span class="z-ped-dot"></span>${t('pedOnNote')}</div>
+          <div class="z-ped-session">${t('pedSession')}: <b id="z-ped-session">${ped.session}</b></div>
+          <button class="z-ped-btn stop" data-ped-stop="1">${t('pedStop')}</button>
+        </div>
+        <div class="z-info-box">${t('pedAccuracy')}</div>
+        ${msg}
+      `;
+    }
+
+    function timerHTML(g){
+      const open = timer.id === g.id;
+      if(!open){
+        return `<button class="z-timer-toggle" data-timer-open="${g.id}">⏱ ${t('timerOpen')}</button>`;
+      }
+      const atMax = timer.elapsed >= MAX_TIMER_SEC;
+      return `
+        <div class="z-timer-box">
+          <div class="z-timer-display" id="z-timer-display">${fmtClock(timer.elapsed)}</div>
+          <div class="z-timer-track"><div class="z-timer-bar" id="z-timer-bar" style="width:${Math.min(100,(timer.elapsed/MAX_TIMER_SEC)*100)}%"></div></div>
+          <div class="z-timer-note">${t('timerMaxNote')}</div>
+          <div class="z-timer-actions">
+            <button class="z-timer-btn primary" data-timer-toggle="${g.id}" ${atMax?'disabled':''}>
+              ${timer.running ? '⏸ ' + t('timerPause') : '▶ ' + t('timerStart')}
+            </button>
+            <button class="z-timer-btn" data-timer-reset="${g.id}">${t('timerReset')}</button>
+          </div>
+          <button class="z-timer-btn finish" data-timer-finish="${g.id}" ${timer.elapsed===0?'disabled':''}>
+            ${t('timerFinish')} (+${timer.elapsed} ${g.unit[lang] || g.unit.tr})
+          </button>
         </div>
       `;
     }
@@ -412,11 +592,16 @@ window.ZindeApp = (function(){
       const settingsBtn = root.querySelector('#z-open-settings');
       if(settingsBtn) settingsBtn.onclick = () => { activeTab = 'goals'; render(); };
 
+      const stepOf = (id) => {
+        const g = data.goals.find(x => x.id === id);
+        return (g && g.stepSize) ? g.stepSize : 1;
+      };
+
       root.querySelectorAll('[data-plus]').forEach(btn => {
         btn.onclick = () => {
           const id = btn.dataset.plus;
           const day = getDay(todayKey());
-          day.counts[id] = (day.counts[id] || 0) + 1;
+          day.counts[id] = (day.counts[id] || 0) + stepOf(id);
           persist();
           render();
         };
@@ -426,7 +611,50 @@ window.ZindeApp = (function(){
         btn.onclick = () => {
           const id = btn.dataset.minus;
           const day = getDay(todayKey());
-          day.counts[id] = Math.max(0, (day.counts[id] || 0) - 1);
+          day.counts[id] = Math.max(0, (day.counts[id] || 0) - stepOf(id));
+          persist();
+          render();
+        };
+      });
+
+      // ---- adım sensörü ----
+      const pedStartBtn = root.querySelector('[data-ped-start]');
+      if(pedStartBtn) pedStartBtn.onclick = () => startPedometer();
+      const pedStopBtn = root.querySelector('[data-ped-stop]');
+      if(pedStopBtn) pedStopBtn.onclick = () => stopPedometer();
+
+      // ---- kronometre ----
+      root.querySelectorAll('[data-timer-open]').forEach(btn => {
+        btn.onclick = () => {
+          stopTimerTick();
+          timer = { id: btn.dataset.timerOpen, elapsed:0, running:false, handle:null };
+          render();
+        };
+      });
+
+      root.querySelectorAll('[data-timer-toggle]').forEach(btn => {
+        btn.onclick = () => {
+          if(timer.running){ stopTimerTick(); }
+          else { startTimerTick(); }
+          render();
+        };
+      });
+
+      root.querySelectorAll('[data-timer-reset]').forEach(btn => {
+        btn.onclick = () => {
+          stopTimerTick();
+          timer.elapsed = 0;
+          render();
+        };
+      });
+
+      root.querySelectorAll('[data-timer-finish]').forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.dataset.timerFinish;
+          stopTimerTick();
+          const day = getDay(todayKey());
+          day.counts[id] = (day.counts[id] || 0) + timer.elapsed;
+          timer = { id:null, elapsed:0, running:false, handle:null };
           persist();
           render();
         };
